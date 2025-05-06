@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class TruckMovement : MonoBehaviour
 {
@@ -17,6 +18,14 @@ public class TruckMovement : MonoBehaviour
     public bool isMoving = true;
     private bool movingToB = true;
     private float waitTimer = 0f;
+    
+    [Header("Simulation API")]
+    public bool simulateApiCalls = true;
+    public float apiCallDelay = 0.5f;
+    
+    // Variables pour suivre si nous avons déjà envoyé une notification pour ce point
+    private bool notifiedPointA = false;
+    private bool notifiedPointB = false;
     
     void Update()
     {
@@ -50,6 +59,23 @@ public class TruckMovement : MonoBehaviour
                 // Arrivé à destination, attendre avant de repartir
                 isMoving = false;
                 waitTimer = waitTimeAtPoints;
+                
+                // Simuler l'envoi à l'API
+                if (simulateApiCalls)
+                {
+                    if (movingToB && !notifiedPointB)
+                    {
+                        StartCoroutine(SimulateApiCall("pointB", "Le camion est arrivé au point B"));
+                        notifiedPointB = true;
+                        notifiedPointA = false; // Réinitialiser pour le prochain passage
+                    }
+                    else if (!movingToB && !notifiedPointA)
+                    {
+                        StartCoroutine(SimulateApiCall("pointA", "Le camion est arrivé au point A"));
+                        notifiedPointA = true;
+                        notifiedPointB = false; // Réinitialiser pour le prochain passage
+                    }
+                }
             }
         }
         else
@@ -72,6 +98,27 @@ public class TruckMovement : MonoBehaviour
                 }
             }
         }
+    }
+    
+    // Fonction pour simuler un appel API
+    private IEnumerator SimulateApiCall(string pointName, string message)
+    {
+        Debug.Log($"Préparation de l'envoi des données à l'API pour {pointName}...");
+        
+        // Simuler un délai réseau
+        yield return new WaitForSeconds(apiCallDelay);
+        
+        // Simuler la création d'un payload JSON
+        string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        string payload = $"{{ \"truckId\": \"{gameObject.name}\", \"point\": \"{pointName}\", \"timestamp\": \"{timestamp}\" }}";
+        
+        // Simuler l'envoi et la réponse
+        Debug.Log($"API CALL: {message}");
+        Debug.Log($"Payload envoyé: {payload}");
+        Debug.Log($"Réponse de l'API: Succès - Données enregistrées pour {gameObject.name} à {timestamp}");
+        
+        // Vous pourriez ajouter ici un événement que d'autres scripts pourraient écouter
+        // par exemple: OnApiCallCompleted?.Invoke(pointName, true);
     }
     
     // Fonction pour visualiser le chemin dans l'éditeur
