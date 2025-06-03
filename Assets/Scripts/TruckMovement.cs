@@ -15,9 +15,15 @@ public class TruckMovement : MonoBehaviour
     public bool loopPath = true;
     public float waypointReachedDistance = 0.1f;
     
+    [Header("Paramètres de suivi de route")]
+    public List<Transform> roadPoints = new List<Transform>();  // Points intermédiaires pour définir la route
+    public float steeringSpeed = 3.0f;  // Vitesse de rotation du camion
+    public bool followRoad = true;  // Activer/désactiver le suivi de route
+    
     [Header("État actuel")]
     public bool isMoving = true;
     private float waitTimer = 0f;
+    private int currentRoadPointIndex = 0;  // Index du point de route actuel
     
     [Header("Simulation API")]
     public bool simulateApiCalls = true;
@@ -45,7 +51,7 @@ public class TruckMovement : MonoBehaviour
         
         if (isMoving)
         {
-            // Obtenir le point de passage actuel
+            // Obtenir le point de passage actuel (destination finale)
             Transform currentWaypoint = waypoints[currentWaypointIndex];
             
             if (currentWaypoint == null)
@@ -54,18 +60,43 @@ public class TruckMovement : MonoBehaviour
                 return;
             }
             
+            // Déterminer le point cible (soit un point de route, soit le waypoint)
+            Vector3 targetPosition;
+            
+            if (followRoad && roadPoints.Count > 0)
+            {
+                // Utiliser les points de route pour un chemin plus précis
+                targetPosition = GetCurrentTargetPosition();
+            }
+            else
+            {
+                // Aller directement vers le waypoint
+                targetPosition = currentWaypoint.position;
+            }
+            
             // Calculer la direction et déplacer le camion
-            Vector3 direction = (currentWaypoint.position - transform.position).normalized;
+            Vector3 direction = (targetPosition - transform.position).normalized;
             transform.position += direction * speed * Time.deltaTime;
             
-            // Orienter le camion dans la direction du mouvement
+            // Orienter le camion dans la direction du mouvement de façon plus fluide
             if (direction != Vector3.zero)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(direction);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 5f * Time.deltaTime);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, steeringSpeed * Time.deltaTime);
             }
             
-            // Vérifier si le camion est arrivé à destination
+            // Vérifier si le camion est arrivé au point de route actuel
+            if (followRoad && roadPoints.Count > 0)
+            {
+                float distanceToRoadPoint = Vector3.Distance(transform.position, targetPosition);
+                if (distanceToRoadPoint < waypointReachedDistance)
+                {
+                    // Passer au point de route suivant
+                    UpdateRoadPointIndex();
+                }
+            }
+            
+            // Vérifier si le camion est arrivé à destination (waypoint)
             float distanceToTarget = Vector3.Distance(transform.position, currentWaypoint.position);
             if (distanceToTarget < waypointReachedDistance)
             {
@@ -83,6 +114,9 @@ public class TruckMovement : MonoBehaviour
                 
                 // Passer au point suivant
                 currentWaypointIndex++;
+                
+                // Réinitialiser l'index des points de route pour le nouveau segment
+                ResetRoadPointsForNewSegment();
                 
                 // Si on a atteint le dernier point, revenir au début si loopPath est activé
                 if (currentWaypointIndex >= waypoints.Count)
@@ -113,6 +147,40 @@ public class TruckMovement : MonoBehaviour
                 isMoving = true;
             }
         }
+    }
+    
+    // Obtenir la position cible actuelle (point de route ou waypoint)
+    private Vector3 GetCurrentTargetPosition()
+    {
+        // Utiliser directement l'index du point de route actuel
+        if (followRoad && roadPoints.Count > 0 && currentRoadPointIndex < roadPoints.Count)
+        {
+            return roadPoints[currentRoadPointIndex].position;
+        }
+        
+        // Si pas de points de route valides, utiliser le waypoint directement
+        return waypoints[currentWaypointIndex].position;
+    }
+    
+    // Mettre à jour l'index du point de route actuel
+    private void UpdateRoadPointIndex()
+    {
+        if (roadPoints.Count > 0)
+        {
+            currentRoadPointIndex++;
+            
+            // Si on a dépassé le dernier point de route, passer au waypoint
+            if (currentRoadPointIndex >= roadPoints.Count)
+            {
+                currentRoadPointIndex = 0;
+            }
+        }
+    }
+    
+    // Réinitialiser les points de route pour un nouveau segment
+    private void ResetRoadPointsForNewSegment()
+    {
+        currentRoadPointIndex = 0;
     }
     
     // Fonction pour simuler un appel API
@@ -170,6 +238,19 @@ public class TruckMovement : MonoBehaviour
                 {
                     Gizmos.color = Color.green;
                     Gizmos.DrawSphere(waypoints[i].position, 0.2f);
+                }
+            }
+        }
+        
+        // Dessiner les points de route en rouge
+        if (followRoad && roadPoints.Count > 0)
+        {
+            foreach (Transform roadPoint in roadPoints)
+            {
+                if (roadPoint != null)
+                {
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawSphere(roadPoint.position, 0.15f);
                 }
             }
         }
