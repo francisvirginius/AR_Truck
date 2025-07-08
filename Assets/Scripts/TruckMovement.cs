@@ -219,16 +219,13 @@ public class TruckMovement : MonoBehaviour
     }
 
     // Fonction pour simuler un appel API
+    // Dans la méthode SimulateApiCall, ajoutez :
     private IEnumerator SimulateApiCall(string pointName, string message)
     {
-        Debug.Log($"Préparation de l'envoi des données à l'API pour {pointName}...");
+        // ... existing code ...
 
-        // Simuler un délai réseau
-        yield return new WaitForSeconds(apiCallDelay);
-
-        // Simuler la création d'un payload JSON
-        string timestamp = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        string payload = $"{{ \"truckId\": \"{gameObject.name}\", \"point\": \"{pointName}\", \"timestamp\": \"{timestamp}\" }}";
+        // Envoyer les données via MQTT
+        await ApiManager.Instance.SendMqttMessage(payload);
 
         Debug.Log($"API CALL: {message}");
         Debug.Log($"Payload envoyé: {payload}");
