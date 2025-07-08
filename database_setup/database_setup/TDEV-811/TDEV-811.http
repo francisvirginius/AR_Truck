@@ -1,0 +1,6 @@
+@TDEV_811_HostAddress = http://localhost:5219
+
+GET {{TDEV_811_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
